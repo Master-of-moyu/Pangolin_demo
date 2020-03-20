@@ -10,5 +10,15 @@ find_package(Pangolin)
 include_directories(${Pangolin_INCLUDE_DIRS})
 message(STATUS "Found Pangolin in: " ${Pangolin_INCLUDE_DIRS})
 
-add_executable(visualizeGeometry visualizeGeometry.cpp)
-target_link_libraries(visualizeGeometry ${Pangolin_LIBRARIES})
+add_executable(test
+# hello.cpp
+# visualizeGeometry.cpp
+HelloPangolinOffscreen.cpp
+)
+target_link_libraries(test ${Pangolin_LIBRARIES})
+
+add_subdirectory(SimpleDisplay)
+add_subdirectory(SimpleDisplayImage)
+add_subdirectory(SimpleMultiDisplay)
+add_subdirectory(SimplePlot)
+add_subdirectory(SimpleScene)
