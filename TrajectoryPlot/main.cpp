@@ -12,6 +12,7 @@ using std::endl;
 std::string trajectory_file = "./TrajectoryPlot/trajectory.tum";
 
 void DrawTrajectory(std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>> &);
+void DrawTrajectoryCamera(std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>> &);
 
 int main() {
     std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>> poses;
@@ -24,14 +25,15 @@ int main() {
     while (!fin.eof()) { //fin.eof()判断文件是否为空
         double time, tx, ty, tz, qx, qy, qz, qw;
         fin >> time >> tx >> ty >> tz >> qx >> qy >> qz >> qw;
-        Isometry3d Twr(Quaterniond(qw, qx, qy, qz)); //变换矩阵的旋转部分
-        Twr.pretranslate(Vector3d(tx, ty, tz));      //变换矩阵的平移部分
+        Isometry3d Twr(Quaterniond(qw, qx, qy, qz));        //变换矩阵的旋转部分
+        Twr.pretranslate(Vector3d(tx * 3, ty * 3, tz * 3)); //变换矩阵的平移部分
         poses.push_back(Twr);
     }
     cout << "read total " << poses.size() << " pose entries" << endl;
 
     // draw trajectory in pangolin
-    DrawTrajectory(poses);
+    // DrawTrajectory(poses);
+    DrawTrajectoryCamera(poses);
     return 0;
 }
 
@@ -82,6 +84,93 @@ void DrawTrajectory(std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>
             glEnd();
         }
 
+        glBegin(GL_LINES);
+        glColor3f(1.0, 0.0, 0.0);
+        glVertex3d(0, 0, 0);
+        glVertex3d(0.3, 0, 0);
+        glColor3f(0.0, 1.0, 0.0);
+        glVertex3d(0, 0, 0);
+        glVertex3d(0, 0.3, 0);
+        glColor3f(0.0, 0.0, 1.0);
+        glVertex3d(0, 0, 0);
+        glVertex3d(0, 0, 0.3);
+        glEnd();
+        pangolin::FinishFrame();
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+}
+
+void DrawTrajectoryCamera(std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>> &poses) {
+    if (poses.empty()) {
+        cout << "parameter is empty!" << endl;
+        return;
+    }
+    // create pangolin window and plot the trajectory
+    pangolin::CreateWindowAndBind("Trajectory Viewer", 1024, 768);
+    glEnable(GL_DEPTH_TEST); //深度测试
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    pangolin::OpenGlRenderState s_cam( //摆放一个相机
+        pangolin::ProjectionMatrix(1024, 768, 500, 500, 512, 389, 0.1, 1000),
+        pangolin::ModelViewLookAt(0, -0.1, -1.8, 0, 0, 0, 0.0, -1.0, 0.0));
+    pangolin::View &d_cam = pangolin::CreateDisplay() //创建一个窗口
+                                .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f / 768.0f)
+                                .SetHandler(new pangolin::Handler3D(s_cam));
+
+    while (pangolin::ShouldQuit() == false) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //消除颜色缓冲
+        d_cam.Activate(s_cam);
+
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        // pangolin::glDraw_z0(0.5f, 10);
+        // draw poses
+        size_t i = 0;
+        for (auto &Twc : poses) //从poses中取位姿
+        {
+            i++;
+            if (i % 30 != 0) continue;
+            glPushMatrix();
+            Eigen::Matrix4f m = poses[i].matrix().cast<float>();
+            glMultMatrixf((GLfloat *)m.data());
+
+            const float w = 0.1;
+            const float h = w * 0.75;
+            const float z = w * 0.6;
+            glColor3f(1, 0, 0);
+            glLineWidth(2);
+            glBegin(GL_LINES);
+            //画相机模型
+            glVertex3f(0, 0, 0);
+            glVertex3f(w, h, z);
+            glVertex3f(0, 0, 0);
+            glVertex3f(w, -h, z);
+            glVertex3f(0, 0, 0);
+            glVertex3f(-w, -h, z);
+            glVertex3f(0, 0, 0);
+            glVertex3f(-w, h, z);
+            glVertex3f(w, h, z);
+            glVertex3f(w, -h, z);
+            glVertex3f(-w, h, z);
+            glVertex3f(-w, -h, z);
+            glVertex3f(-w, h, z);
+            glVertex3f(w, h, z);
+            glVertex3f(-w, -h, z);
+            glVertex3f(w, -h, z);
+
+            glEnd();
+            glPopMatrix();
+        }
+        //画轨迹
+        glLineWidth(1);
+        for (size_t i = 0; i < poses.size() - 1; i++) {
+            glColor3f(1.0, 1.0, 0.0);
+            glBegin(GL_LINES);
+            auto p1 = poses[i], p2 = poses[i + 1];
+            glVertex3d(p1.translation()[0], p1.translation()[1], p1.translation()[2]);
+            glVertex3d(p2.translation()[0], p2.translation()[1], p2.translation()[2]);
+        }
+        glEnd();
+        //画坐标原点
         glBegin(GL_LINES);
         glColor3f(1.0, 0.0, 0.0);
         glVertex3d(0, 0, 0);
