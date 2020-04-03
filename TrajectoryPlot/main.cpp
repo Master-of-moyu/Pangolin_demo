@@ -13,6 +13,7 @@ std::string trajectory_file = "./TrajectoryPlot/trajectory.tum";
 
 void DrawTrajectory(std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>> &);
 void DrawTrajectoryCamera(std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>> &);
+void DrawPoints();
 
 int main() {
     std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>> poses;
@@ -46,7 +47,7 @@ void DrawTrajectory(std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>
 
     pangolin::OpenGlRenderState s_cam(
         pangolin::ProjectionMatrix(1024, 768, 500, 500, 512, 389, 0.1, 1000),
-        pangolin::ModelViewLookAt(0, -0.1, -1.8, 0, 0, 0, 0.0, -1.0, 0.0));
+        pangolin::ModelViewLookAt(-2, 0, 3, 0, 0, 0, 1.0, 0.0, 0.0));
 
     pangolin::View &d_cam = pangolin::CreateDisplay()
                                 .SetBounds(0.0, 1.0, 0.0, 1.0, -1024.0f / 768.0f)
@@ -55,6 +56,9 @@ void DrawTrajectory(std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>
     while (pangolin::ShouldQuit() == false) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         d_cam.Activate(s_cam);
+        glColor3f(0.5, 0.5, 0.5);
+        glLineWidth(0.5);
+        pangolin::glDraw_z0(0.5f, 10);
         glLineWidth(1);
         // 画每个位姿的三个坐标轴
         // for (size_t i = 0; i < poses.size(); i++) {
@@ -84,16 +88,18 @@ void DrawTrajectory(std::vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>
             glEnd();
         }
 
+        //画坐标原点
+        glLineWidth(2);
         glBegin(GL_LINES);
         glColor3f(1.0, 0.0, 0.0);
         glVertex3d(0, 0, 0);
-        glVertex3d(0.3, 0, 0);
+        glVertex3d(0.6, 0, 0);
         glColor3f(0.0, 1.0, 0.0);
         glVertex3d(0, 0, 0);
-        glVertex3d(0, 0.3, 0);
+        glVertex3d(0, 0.6, 0);
         glColor3f(0.0, 0.0, 1.0);
         glVertex3d(0, 0, 0);
-        glVertex3d(0, 0, 0.3);
+        glVertex3d(0, 0, 0.6);
         glEnd();
         pangolin::FinishFrame();
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -112,7 +118,7 @@ void DrawTrajectoryCamera(std::vector<Isometry3d, Eigen::aligned_allocator<Isome
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     pangolin::OpenGlRenderState s_cam( //摆放一个相机
         pangolin::ProjectionMatrix(1024, 768, 500, 500, 512, 389, 0.1, 1000),
-        pangolin::ModelViewLookAt(0, -0.1, -1.8, 0, 0, 0, 0.0, -1.0, 0.0));
+        pangolin::ModelViewLookAt(-1, 0, 3, 0, 0, 0, 1.0, 0.0, 0.0));
     pangolin::View &d_cam = pangolin::CreateDisplay() //创建一个窗口
                                 .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f / 768.0f)
                                 .SetHandler(new pangolin::Handler3D(s_cam));
@@ -122,7 +128,9 @@ void DrawTrajectoryCamera(std::vector<Isometry3d, Eigen::aligned_allocator<Isome
         d_cam.Activate(s_cam);
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        // pangolin::glDraw_z0(0.5f, 10);
+        glColor3f(0.5, 0.5, 0.5);
+        glLineWidth(0.5);
+        pangolin::glDraw_z0(0.5f, 10);
         // draw poses
         size_t i = 0;
         for (auto &Twc : poses) //从poses中取位姿
@@ -171,18 +179,43 @@ void DrawTrajectoryCamera(std::vector<Isometry3d, Eigen::aligned_allocator<Isome
         }
         glEnd();
         //画坐标原点
+        glLineWidth(2);
         glBegin(GL_LINES);
         glColor3f(1.0, 0.0, 0.0);
         glVertex3d(0, 0, 0);
-        glVertex3d(0.3, 0, 0);
+        glVertex3d(0.6, 0, 0);
         glColor3f(0.0, 1.0, 0.0);
         glVertex3d(0, 0, 0);
-        glVertex3d(0, 0.3, 0);
+        glVertex3d(0, 0.6, 0);
         glColor3f(0.0, 0.0, 1.0);
         glVertex3d(0, 0, 0);
-        glVertex3d(0, 0, 0.3);
+        glVertex3d(0, 0, 0.6);
         glEnd();
+        DrawPoints();
         pangolin::FinishFrame();
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
+}
+
+void DrawPoints() {
+    const int N = 20;
+    std::vector<Eigen::Vector3d> points;
+    for (size_t i = 0; i < N / 2; i++) {
+        Eigen::Vector3d p((i + 0.5) * 1.0 / 6, 0.2, 0.5);
+        points.push_back(p);
+    }
+
+    for (size_t i = 0; i < N / 2; i++) {
+        Eigen::Vector3d p(0.5, (i + 0.2) * 1.0 / 6, 0.5);
+        points.push_back(p);
+    }
+
+    glPointSize(3);
+    glBegin(GL_POINTS);
+    glColor3f(1.0, 1.0, 1.0);
+
+    for (size_t i = 0; i < N; i++) {
+        glVertex3f(points[i][0], points[i][1], points[i][2]);
+    }
+    glEnd();
 }
